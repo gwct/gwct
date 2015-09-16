@@ -1,3 +1,4 @@
+#!/usr/bin/python
 #############################################################################
 #This is the IO wrapper of the GWCT. As input, you must have ancestral 
 #reconstructions from PAML as input. This would be the output directory of
@@ -213,8 +214,8 @@ for filename in filelist:
 			target_counts[node_key][0] = target_counts[node_key][0] + conv_sites;
 			target_counts[node_key][1] = target_counts[node_key][1] + div_sites;
 
-	if i > 0:
-		break;	
+#	if i > 0:
+#		break;	
 
 pstring = "100.0% complete.";
 sys.stderr.write('\b' * len(pstring) + pstring);
