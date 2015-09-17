@@ -22,17 +22,15 @@ def convCheck(in_name, c_name, d_name, target_list, c_sites, d_sites, p_thresh, 
 
 #	print "-----";
 #	print gid;
-
+	#print target_list;
 	for t in xrange(len(target_list)):
 		if type(target_list[t]) == str:
-			if "_" in target_list[t]:
-				target_list[t] = gwctree.specRelabel(target_list[t],td);
+			target_list[t] = gwctree.specRelabel(target_list[t],td);
 		else:
 			for s in xrange(len(target_list[t])):
-				if "_" in s:
-					target_list[t][s] = gwctree.specRelabel(target_list[t][s],td);
+				target_list[t][s] = gwctree.specRelabel(target_list[t][s],td);
 	#Relabeling of target labels to match those in the tree.
-
+	#print target_list;
 	conv_nodes = {};
 	for t in target_list:
 		if type(t) == list:
@@ -45,7 +43,8 @@ def convCheck(in_name, c_name, d_name, target_list, c_sites, d_sites, p_thresh, 
 				conv_nodes[">node #" + t] = ">node #" + td[t][1];
 	#Identification of ancestral and target nodes in the tree. If more than one species is present in a group, this will get the common ancestor
 	#of those species as the target node.
-
+	#print conv_nodes;
+	#print "-----";
 	probseqs = gwctlib.fastaGetDict(in_name);
 	#Reading of the sequence probability file.
 

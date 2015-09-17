@@ -75,6 +75,9 @@ def comAnc(spec_list, treedict):
 
 def specRelabel(s, t_d):
 #Relabels species to match the labels in the tree.
+	if s.isdigit():
+		return s;
+
 	for node in t_d:
 		if s in node:
 			s = node;

@@ -85,7 +85,7 @@ def getTargs(td, t_opt):
 starttime = gwctlib.getLogTime();
 indir, orig_targets, unique, pairwise, prob_thresh = optParse(0);
 
-indir, script_outdir = gwctlib.getOutdir(indir, "gt_conv", starttime);
+indir, script_outdir = gwctlib.getOutdir(indir, "gwct", starttime);
 inslist = os.listdir(indir);
 for each in inslist:
 	if each.find("run_codeml") != -1 or each.find("codeml_combined") != -1:
@@ -96,7 +96,7 @@ for each in inslist:
 print gwctlib.getTime() + " | Creating main output directory:\t" + script_outdir;
 os.system("mkdir " + script_outdir);
 
-logfilename = script_outdir + "gt_conv.log";
+logfilename = script_outdir + "gwct.log";
 logfile = open(logfilename, "w");
 logfile.write("");
 logfile.close();
@@ -105,7 +105,7 @@ l = 1;
 sp = 65;
 
 gwctlib.logCheck(l, logfilename, "=======================================================================");
-gwctlib.logCheck(l, logfilename, "\t\t\tCounting convergent sites");
+gwctlib.logCheck(l, logfilename, "\t\t\tGWCT: Genome-Wide Convergence Tester");
 gwctlib.logCheck(l, logfilename, "\t\t\t" + gwctlib.getDateTime());
 gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INPUT  | Using ancestral reconstructions in:", sp) + indir);
 if orig_targets != "":
@@ -243,9 +243,6 @@ gwctlib.logCheck(l, logfilename, "# Total convergent sites found: " + str(conv_s
 gwctlib.logCheck(l, logfilename, "# Total divergent sites found: " + str(div_sites));
 gwctlib.logCheck(l, logfilename, "# Total genes checked: " + str(i));
 gwctlib.logCheck(l, logfilename, "# ==============================================================================================");
-
-for t in target_counts:
-	print t, ":", target_counts[t];
 
 
 
