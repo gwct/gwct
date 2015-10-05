@@ -11,18 +11,10 @@ import gwctree
 import gwctlib
 
 #############################################################################
-def convCheck(in_name, c_name, d_name, u_name, target_list, c_sites, d_sites, u_sites, p_thresh, chrome, g, td):
+def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td, u_opt):
 
-#	print treefilename
-#	print infilename
-#	print tree;
-#	print td;
-#	print newtree;
-	#Prep info for this gene and reading of the tree file.
-
-#	print "-----";
-#	print gid;
-	#print target_list;
+	#print conv_key;
+	#print "-----";
 	target_alleles = {};
 	for t in xrange(len(target_list)):
 		if type(target_list[t]) == str:
@@ -114,12 +106,14 @@ def convCheck(in_name, c_name, d_name, u_name, target_list, c_sites, d_sites, u_
 		#if p_thresh > 0 and all(c >= p_thresh for c in cur_probs):
 		if all(c >= p_thresh for c in cur_probs):
 			if conv_site.values().count(conv_site.values()[0]) == len(conv_site.values()) and conv_site.values()[0] not in anc_site.values():
-				c_sites = c_sites + 1;
-				outline = str(c_sites) + "\t" + chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
-				convfile = open(c_name, "a");
+				#c_sites = c_sites + 1;
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
+				conv_dict[conv_key][0].append(outline);
+				#c_sites.append(outline);
+				#convfile = open(c_name, "a");
 
-				convfile.write(outline);
-				convfile.close();
+				#convfile.write(outline);
+				#convfile.close();
 
 				#print "Convergent site found!!";
 				#print c_name;
@@ -131,12 +125,14 @@ def convCheck(in_name, c_name, d_name, u_name, target_list, c_sites, d_sites, u_
 			#reconstructed states are >= to that threshold.
 
 			if all(anc_site[conv_nodes[node]] != conv_site[node] for node in conv_nodes) and all(conv_site.values().count(aa) == 1 for aa in conv_site.values()):
-				d_sites = d_sites + 1;
-				outline = str(d_sites) + "\t" + chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
-				divfile = open(d_name, "a");
+				#d_sites = d_sites + 1;
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
+				conv_dict[conv_key][1].append(outline);
+				#d_sites.append(outline);
+				#divfile = open(d_name, "a");
 
-				divfile.write(outline);
-				divfile.close();
+				#divfile.write(outline);
+				#divfile.close();
 
 				#print "Divergent site found!!";
 				#print d_name;
@@ -147,13 +143,15 @@ def convCheck(in_name, c_name, d_name, u_name, target_list, c_sites, d_sites, u_
 				#print cur_probs;
 				#sys.exit();
 
-		if u_name != "" and target_alleles.values().count(target_alleles.values()[0]) == len(target_alleles.values()) and target_alleles.values()[0] not in bg_alleles.values() and "-" not in bg_alleles.values() and "X" not in bg_alleles.values():
-				u_sites = u_sites + 1;
-				outline = str(u_sites) + "\t" + chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(bg_alleles.values()) + "\t" + "".join(target_alleles.values()) + "\n";
-				unifile = open(u_name, "a");
+		if u_opt == 1 and target_alleles.values().count(target_alleles.values()[0]) == len(target_alleles.values()) and target_alleles.values()[0] not in bg_alleles.values() and "-" not in bg_alleles.values() and "X" not in bg_alleles.values():
+				#u_sites = u_sites + 1;
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(bg_alleles.values()) + "\t" + "".join(target_alleles.values()) + "\n";
+				conv_dict[conv_key][2].append(outline);
+				#u_sites.append(outline);
+				#unifile = open(u_name, "a");
 
-				unifile.write(outline);
-				unifile.close();
+				#unifile.write(outline);
+				#unifile.close();
 
 				#print "Unique site found!!";
 				#print u_name;
@@ -162,6 +160,6 @@ def convCheck(in_name, c_name, d_name, u_name, target_list, c_sites, d_sites, u_
 				#sys.exit();
 
 		x = x + 1;
-	return c_sites, d_sites, u_sites;
+	return conv_dict;
 
 #############################################################################

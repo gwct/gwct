@@ -7,7 +7,8 @@
 #September 2015.
 #############################################################################
 
-import sys, os, argparse, copy
+import sys, os, argparse, copy, math
+import multiprocessing as mp
 sys.path.append(sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/lib-gwct/"))
 import gwctlib, gwctree
 import convergence
@@ -25,6 +26,7 @@ def optParse(errorflag):
 	parser.add_argument("-u", dest="uniq_subs", help="A boolean to output the sites that are unique substitutions in the tip branches of interest (1) or not (0). Default: 0", type=int, default = 0);
 	parser.add_argument("-w", dest="pairwise_opt", help="Option to tell the program to simply do all pairwise comparisons of tip branches (1) or pairwise comparisons of all branches (2) and make a C/D graph. Default: 0, do not do pairwise comparisons", type=int, default=0);
 	parser.add_argument("-p", dest="prob_thresh", help="A probability threshold to only retrieve convergent sites with probabilities greater than or equal to. Set to 0 for no threshold. Default: 0", type=float, default=0);
+	parser.add_argument("-n", dest="number_threads", help="The number of threads on which to run the job. NOTE: One thread will be reserved for the main process, so by entering '4' here, only 3 threads will be utilized on the data. Entering '2' is equivalent to running the data on 1 thread. Default: 1", type=int, default=1);
 	parser.add_argument("-o", dest="output_suffix", help="The SUFFIX of the directory name to be created by the script. Something descriptive for your run.", default="");
 
 	args = parser.parse_args();
@@ -62,7 +64,11 @@ def optParse(errorflag):
 			gwctlib.errorOut(8, "With -u set to 1, -t must also be defined and -w must be 0");
 			optParse(1);
 
-		return args.input, args.target_specs, args.uniq_subs, args.pairwise_opt, args.prob_thresh, args.output_suffix;
+		if args.number_threads <= 0:
+			gwctlib.errorOut(9, "-n must be a positive, non-zero integer");
+			optParse(1);
+
+		return args.input, args.target_specs, args.uniq_subs, args.pairwise_opt, args.prob_thresh, args.number_threads, args.output_suffix;
 
 	elif errorflag == 1:
 		parser.print_help();
@@ -71,11 +77,11 @@ def optParse(errorflag):
 ##########
 def getTargs(td, t_opt):
 	target_list = []
-	for t1 in tree_dict:
-		if (t_opt == 1 and tree_dict[t1][9] != 'tip') or (t_opt == 2 and tree_dict[t1][9] == 'root'):
+	for t1 in td:
+		if (t_opt == 1 and td[t1][9] != 'tip') or (t_opt == 2 and td[t1][9] == 'root'):
 			continue;
-		for t2 in tree_dict:
-			if (t_opt == 1 and tree_dict[t2][9] != 'tip') or (t_opt == 2 and tree_dict[t2][9] == 'root') or t1 == t2:
+		for t2 in td:
+			if (t_opt == 1 and td[t2][9] != 'tip') or (t_opt == 2 and td[t2][9] == 'root') or t1 == t2:
 				continue;
 			if [t1,t2] not in target_list and [t2,t1] not in target_list:
 				target_list.append([t1,t2]);
@@ -83,15 +89,71 @@ def getTargs(td, t_opt):
 	return target_list;
 
 ############################################
+#Threaded Block
+############################################
+#def splitThreads(filelist_func, orig_targets_func, u, p, threads):
+def splitThreads(arglist):
+	filelist_func = arglist[0];
+	orig_targets = arglist[1];
+	u = arglist[2];
+	p = arglist[3];
+	threads = arglist[4];
+	results_dict = {};
+
+	for filename in filelist_func:
+		#print filename;
+
+		gid = filename[:filename.index("_ancprobs.fa")];
+		gene = "_".join(gid.split("_")[:2]);
+		chromosome = gid[gid.find("chr"):gid.find("chr")+4]
+		infilename = os.path.join(indir, filename);
+		treefilename = os.path.join(indir, gid + "_anc.tre");
+		tree = open(treefilename,"r").read().replace("\n","");
+		tree_dict, new_tree = gwctree.treeParse(tree,2);
+
+		if orig_targets != "":
+			results_key = str(orig_targets_func);
+			if results_key not in results_dict:
+				results_dict[results_key] = [[],[],[]];
+			targets = copy.deepcopy(orig_targets_func);
+			#Resets the targets for each gene.
+			results_dict = convergence.convCheck(infilename, results_dict, results_key, targets, prob_thresh, chromosome, gene, tree_dict, u);
+			#Checking for convergent sites
+
+		else:
+			target_nodes = getTargs(tree_dict, p);
+			for targets in target_nodes:
+				if tree_dict[targets[0]][1] == targets[1] or tree_dict[targets[1]][1] == targets[0]:
+					continue;
+				#If one node is the ancestor of the other, skip this comparison.
+
+				node_key = "";
+				for n in targets:
+					if "_" in n:
+						node_key = node_key + n[n.index("_")+1:];
+					else:
+						node_key = node_key + n;
+					if n == targets[0]:
+						node_key = node_key + "-";
+
+				if node_key not in results_dict:
+					results_dict[node_key] = [[],[],[]];
+
+				results_dict = convergence.convCheck(infilename, results_dict, node_key, targets, prob_thresh, chromosome, gene, tree_dict, u);
+
+	return results_dict;
+
+
+############################################
 #Main Block
 ############################################
 
 starttime = gwctlib.getLogTime();
-indir, orig_targets, unique, pairwise, prob_thresh, suffix = optParse(0);
+indir, orig_targets, unique, pairwise, prob_thresh, num_threads, suffix = optParse(0);
 
 if suffix != "":
 	suffix = "-" + suffix;
-if sys.platform.find("win") != -1:
+if sys.platform.find("win") != -1 and sys.platform != "darwin":
 	rm_cmd = "del ";
 else:
 	rm_cmd = "rm ";
@@ -102,7 +164,9 @@ for each in inslist:
 	if each.find("run_codeml") != -1 or each.find("codeml_combined") != -1:
 		#indir = indir + each + "/anc_seqs_fa/";
 		indir = os.path.join(indir, each, "anc_seqs_fa");
-		filelist = os.listdir(indir);
+		orig_filelist = os.listdir(indir);
+		filelist = [f for f in orig_filelist if f.find("ancprobs") != -1];
+		num_files = len(filelist);
 		break;
 
 print gwctlib.getTime() + " | Creating main output directory:\t" + script_outdir;
@@ -112,8 +176,8 @@ logfilename = os.path.join(script_outdir, "gwct.log");
 logfile = open(logfilename, "w");
 logfile.write("");
 logfile.close();
-main_header = "# Site#\tChromosome\tGeneID\tAlignLen\tPosition\tAncAlleles\tTargetAlleles\n";
-uniq_header = "# Site#\tChromosome\tGeneID\tAlignLen\tPosition\tBackgroundAlleles\tTargetAlleles\n";
+main_header = "# Chromosome\tGeneID\tAlignLen\tPosition\tAncAlleles\tTargetAlleles\n";
+uniq_header = "# Chromosome\tGeneID\tAlignLen\tPosition\tBackgroundAlleles\tTargetAlleles\n";
 l = 1;
 sp = 65;
 
@@ -151,10 +215,11 @@ elif pairwise == 2:
 	gwctlib.logCheck(l, logfilename, "# INFO   | Performing pairwise comparisons of ALL branches");
 if prob_thresh > 0:
 	gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Ancestral probability threshold:", sp) + str(prob_thresh));
+gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Number of threads:", sp) + str(num_threads));
 gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# OUTPUT | Output directory created within input directory:", sp) + script_outdir);
 gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Checking for convergent and divergent sites", sp));
 gwctlib.logCheck(l, logfilename, "# ---------------------------------------------\n");
-
+#sys.exit()
 if pairwise != 0:
 	uniqfilename = "";
 	print gwctlib.getTime() +  " | +Creating pairwise output directory.\n";
@@ -163,98 +228,91 @@ if pairwise != 0:
 
 ################################
 
-conv_sites = 0;
-div_sites = 0;
-uniq_sites = 0;
+###SPLIT UP THE GENES, MAKE THE ARGS, CALL THE FUNCTION
+if num_threads == 1:
+	main_args = [filelist, orig_targets, unique, pairwise, num_threads]
+	main_results_dict = splitThreads(main_args);
+else:
+	filesplit = [];
+	files_per_split = math.ceil(float(num_files) / float(num_threads-1));
+	split_num = 0;
+	i = 1;
+	for each in filelist:
+		if i == 1:
+			filesplit.append([]);
+		filesplit[split_num].append(each);
+		i = i + 1;
+		if i > files_per_split:
+			i = 1;
+			split_num = split_num + 1;
 
-numbars = 0;
-donepercent = [];
-numfiles = len(filelist);
-i = 0;
-j = 0;
-for filename in filelist:
-	numbars, percentdone = gwctlib.loadingBar(j, numfiles, donepercent, numbars);
-	j = j + 1;
-	if filename.find("ancprobs.fa") == -1:
-		continue;
-	i = i + 1;
-	#For every gene, however if its not an ancestral probabilities file, skip it. j is total number of files, i is total number of genes.
-	#print filename;
-	#sys.exit();
 
-	gid = filename[:filename.index("_ancprobs.fa")];
-	gene = "_".join(gid.split("_")[:2]);
-	chromosome = gid[gid.find("chr"):gid.find("chr")+4]
-	infilename = os.path.join(indir, filename);
-	treefilename = os.path.join(indir, gid + "_anc.tre");
-	tree = open(treefilename,"r").read().replace("\n","");
-	tree_dict, new_tree = gwctree.treeParse(tree,2);
-	#print new_tree;
+	pool = mp.Pool(processes=(num_threads-1));
 
-	if orig_targets != "":
-		targets = copy.deepcopy(orig_targets);
-		#Resets the targets for each gene.
-		conv_sites, div_sites, uniq_sites = convergence.convCheck(infilename, convfilename, divfilename, uniqfilename, targets, conv_sites, div_sites, uniq_sites, prob_thresh, chromosome, gene, tree_dict);
-		#Checking for convergent sites
+	args = []
+	for files in filesplit:
+		args.append([files, orig_targets, unique, pairwise, num_threads]);
+	results = pool.map(splitThreads,args)
 
-	else:
-		target_nodes = getTargs(tree_dict, pairwise);
-		for targets in target_nodes:
-			if tree_dict[targets[0]][1] == targets[1] or tree_dict[targets[1]][1] == targets[0]:
-				continue;
-			#If one node is the ancestor of the other, skip this comparison.
+	print "Results:";
 
-			node_key = "";
-			for n in targets:
-				if "_" in n:
-					node_key = node_key + n[n.index("_")+1:];
-				else:
-					node_key = node_key + n;
-				if n == targets[0]:
-					node_key = node_key + "-";
+	main_results_dict = {};
+	for proc in results:
+		for key in proc:
+			if key not in main_results_dict:
+				main_results_dict[key] = [[],[],[]];
+			main_results_dict[key][0] = main_results_dict[key][0] + proc[key][0];
+			main_results_dict[key][1] = main_results_dict[key][1] + proc[key][1];
+			if unique == 1:
+				main_results_dict[key][2] = main_results_dict[key][2] + proc[key][2];
 
-			if node_key not in target_counts:
-				target_counts[node_key] = [0,0,0.0];
+	#print main_results_dict;
 
-			conv_sites = 0;
-			div_sites = 0;
+if orig_targets != "":
+	main_key = str(orig_targets);
+	open(convfilename,"a").writelines(main_results_dict[main_key][0]);
+	conv_sites = len(main_results_dict[main_key][0]);
+	open(divfilename,"a").writelines(main_results_dict[main_key][1]);
+	div_sites = len(main_results_dict[main_key][1]);
+	if unique == 1:
+		open(uniqfilename,"a").writelines(main_results_dict[main_key][2]);
+		uniq_sites = len(main_results_dict[main_key][2]);
 
-			pairconvfile = os.path.join(pw_dir, node_key + "_conv.txt");
-			pairdivfile = os.path.join(pw_dir, node_key + "_div.txt");
-			gwctlib.filePrep(pairconvfile, main_header);
-			gwctlib.filePrep(pairdivfile, main_header);
 
-			conv_sites, div_sites, uniq_sites = convergence.convCheck(infilename, pairconvfile, pairdivfile, uniqfilename, targets, conv_sites, div_sites, uniq_sites, prob_thresh, chromosome, gene, tree_dict);
-			target_counts[node_key][0] = target_counts[node_key][0] + conv_sites;
-			target_counts[node_key][1] = target_counts[node_key][1] + div_sites;
+else:
+	conv_sites = 0;
+	div_sites = 0;
+	conv_sites_vect = [];
+	div_sites_vect = [];
 
-#	if i > 0:
-#		break;
-
-pstring = "100.0% complete.";
-sys.stderr.write('\b' * len(pstring) + pstring);
-
-if pairwise != 0:
-	conv_sites = [];
-	div_sites = [];
 	lfile = open(logfilename, "a");
 	pairwise_header = "Node #1\tNode#2\t# Convergent\t#Divergent\n";
 	lfile.write(pairwise_header);
-	for pair in target_counts:
-		nodes = pair.split("-");
-		outline = nodes[0] + "\t" + nodes[1] + "\t" + str(target_counts[pair][0]) + "\t" + str(target_counts[pair][1]) + "\n";
-		conv_sites.append(target_counts[pair][0]);
-		div_sites.append(target_counts[pair][1])
+	for pair in main_results_dict:
+		pairconvfile = os.path.join(pw_dir, pair + "_conv.txt");
+		pairdivfile = os.path.join(pw_dir, pair + "_div.txt");
+		gwctlib.filePrep(pairconvfile, main_header);
+		gwctlib.filePrep(pairdivfile, main_header);
+		open(pairconvfile, "a").writelines(main_results_dict[pair][0]);
+		open(pairdivfile, "a").writelines(main_results_dict[pair][1]);
+		cur_conv_num = len(main_results_dict[pair][0]);
+		cur_div_num = len(main_results_dict[pair][1]);
+		outline = pair + "\t" + str(cur_conv_num) + "\t" + str(cur_div_num) + "\n";
 		lfile.write(outline);
+		conv_sites_vect.append(cur_conv_num);
+		div_sites_vect.append(cur_div_num);
+		conv_sites = conv_sites + cur_conv_num;
+		div_sites = div_sites + cur_div_num;
 	lfile.close();
-	open(os.path.join(script_outdir, "crtmp.txt"),"w").write(" ".join(map(str, conv_sites)));
-	open(os.path.join(script_outdir, "drtmp.txt"),"w").write(" ".join(map(str, div_sites)));
+
+	open(os.path.join(script_outdir, "crtmp.txt"),"w").write(" ".join(map(str, conv_sites_vect)));
+	open(os.path.join(script_outdir, "drtmp.txt"),"w").write(" ".join(map(str, div_sites_vect)));
 	gwctlib.logCheck(l, logfilename, "\n\n# " + gwctlib.getTime() + " | Calling R to plot C/D ratios\n");
 	print "-Begin R screen output-";
 	r_cmd = "rscript " + os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib-gwct", "cd_ratio_reg.r") + " " + script_outdir + " crtmp.txt drtmp.txt";
 	os.system(r_cmd);
 	print "--End R screen output--";
-	gwctlib.logCheck(l, logfilename, "\n# " + gwctlib.getTime() + " | Removing temporary files\n");
+	gwctlib.logCheck(l, logfilename, "\n# " + gwctlib.getTime() + " | Removing temporary files");
 	os.system(rm_cmd + os.path.join(script_outdir, "crtmp.txt"));
 	os.system(rm_cmd + os.path.join(script_outdir, "drtmp.txt"));
 
@@ -268,5 +326,5 @@ gwctlib.logCheck(l, logfilename, "# Total convergent sites found: " + str(conv_s
 gwctlib.logCheck(l, logfilename, "# Total divergent sites found: " + str(div_sites));
 if unique == 1:
 	gwctlib.logCheck(l, logfilename, "# Total unique sites found: " + str(uniq_sites));
-gwctlib.logCheck(l, logfilename, "# Total genes checked: " + str(i));
+gwctlib.logCheck(l, logfilename, "# Total genes checked: " + str(num_files));
 gwctlib.logCheck(l, logfilename, "# ==============================================================================================");
