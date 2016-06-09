@@ -6,9 +6,7 @@
 #September 2015.
 #############################################################################
 
-import sys
-import gwctree
-import gwctlib
+import sys, gwctree, gwctcore
 
 #############################################################################
 def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td, u_opt):
@@ -30,17 +28,18 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td
 	for t in target_list:
 		if type(t) == list:
 			f, com_anc = gwctree.comAnc(t,td);
-			conv_nodes[">node #" + com_anc] = ">node #" + td[com_anc][1];
+			conv_nodes[">node #" + td[com_anc][3]] = ">node #" + td[td[com_anc][1]][3];
 		else:
 			if "_" in t:
-				conv_nodes[">" + t[t.index("_")+1:]] = ">node #" + td[t][1];
+				conv_nodes[">" + t[t.index("_")+1:]] = ">node #" + td[td[t][1]][3];
 			else:
-				conv_nodes[">node #" + t] = ">node #" + td[t][1];
+				conv_nodes[">node #" + t] = ">node #" + td[td[t][1]][3];
+
 	#Identification of ancestral and target nodes in the tree. If more than one species is present in a group, this will get the common ancestor
 	#of those species as the target node.
 	#print conv_nodes;
 	#print "-----";
-	probseqs = gwctlib.fastaGetDict(in_name);
+	probseqs = gwctcore.fastaGetDict(in_name);
 	#Reading of the sequence probability file.
 
 	probs = {};

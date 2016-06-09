@@ -7,11 +7,8 @@
 #September 2015.
 #############################################################################
 
-import sys, os, argparse, copy, math
+import sys, os, argparse, copy, math, lib.gwctcore as gwctcore, lib.gwctree as gwctree, lib.convergence as convergence
 import multiprocessing as mp
-sys.path.append(sys.path.append(os.path.dirname(os.path.realpath(__file__)) + "/lib-gwct/"))
-import gwctlib, gwctree
-import convergence
 
 ############################################
 #Function Definitions
@@ -33,40 +30,43 @@ def optParse(errorflag):
 
 	if errorflag == 0:
 		if args.input == None:
-			gwctlib.errorOut(1, "-i must be defined");
+			gwctcore.errorOut(1, "-i must be defined");
 			optParse(1);
 
 		if args.pairwise_opt not in [0,1,2]:
-			gwctlib.errorOut(2, "-w must take values of 0, 1, or 2");
+			gwctcore.errorOut(2, "-w must take values of 0, 1, or 2");
 			optParse(1);
 
 		if args.target_specs == "" and args.pairwise_opt == 0:
-			gwctlib.errorOut(3, "With -w set to 0, -t must be defined");
+			gwctcore.errorOut(3, "With -w set to 0, -t must be defined");
 			optParse(1);
 
 		if args.target_specs != "" and args.pairwise_opt != 0:
-			gwctlib.errorOut(4, "Only one of -t and -w should be set");
+			gwctcore.errorOut(4, "Only one of -t and -w should be set");
 			optParse(1);
 
 		if args.prob_thresh < 0.0 or args.prob_thresh > 1.0:
-			gwctlib.errorOut(5, "-p can only take values between 0.0 and 1.0");
+			gwctcore.errorOut(5, "-p can only take values between 0.0 and 1.0");
 			optParse(1);
 
 		if args.uniq_subs not in [0,1]:
-			gwctlib.errorOut(6, "-u can only take values of 0 or 1");
+			gwctcore.errorOut(6, "-u can only take values of 0 or 1");
 			optParse(1);
 
 		if args.uniq_subs == 1 and args.target_specs == "":
-			gwctlib.errorOut(7, "-u can only be set when a set of target species is defined with -t");
+			gwctcore.errorOut(7, "-u can only be set when a set of target species is defined with -t");
 			optParse(1);
 
 		if args.uniq_subs == 1 and args.target_specs == None:
-			gwctlib.errorOut(8, "With -u set to 1, -t must also be defined and -w must be 0");
+			gwctcore.errorOut(8, "With -u set to 1, -t must also be defined and -w must be 0");
 			optParse(1);
 
 		if args.number_threads <= 0:
-			gwctlib.errorOut(9, "-n must be a positive, non-zero integer");
+			gwctcore.errorOut(9, "-n must be a positive, non-zero integer");
 			optParse(1);
+
+		if args.output_suffix == None:
+			args.output_suffix = "";
 
 		return args.input, args.target_specs, args.uniq_subs, args.pairwise_opt, args.prob_thresh, args.number_threads, args.output_suffix;
 
@@ -78,10 +78,10 @@ def optParse(errorflag):
 def getTargs(td, t_opt):
 	target_list = []
 	for t1 in td:
-		if (t_opt == 1 and td[t1][9] != 'tip') or (t_opt == 2 and td[t1][9] == 'root'):
+		if (t_opt == 1 and td[t1][2] != 'tip') or (t_opt == 2 and td[t1][2] == 'root'):
 			continue;
 		for t2 in td:
-			if (t_opt == 1 and td[t2][9] != 'tip') or (t_opt == 2 and td[t2][9] == 'root') or t1 == t2:
+			if (t_opt == 1 and td[t2][2] != 'tip') or (t_opt == 2 and td[t2][2] == 'root') or t1 == t2:
 				continue;
 			if [t1,t2] not in target_list and [t2,t1] not in target_list:
 				target_list.append([t1,t2]);
@@ -101,7 +101,7 @@ def splitThreads(arglist):
 	results_dict = {};
 
 	for filename in filelist_func:
-		#print filename;
+		print filename;
 
 		gid = filename[:filename.index("_ancprobs.fa")];
 		gene = "_".join(gid.split("_")[:2]);
@@ -109,7 +109,7 @@ def splitThreads(arglist):
 		infilename = os.path.join(indir, filename);
 		treefilename = os.path.join(indir, gid + "_anc.tre");
 		tree = open(treefilename,"r").read().replace("\n","");
-		tree_dict, new_tree = gwctree.treeParse(tree,2);
+		tree_dict, new_tree = gwctree.treeParse(tree);
 
 		if orig_targets != "":
 			results_key = str(orig_targets_func);
@@ -148,7 +148,7 @@ def splitThreads(arglist):
 #Main Block
 ############################################
 
-starttime = gwctlib.getLogTime();
+starttime = gwctcore.getLogTime();
 indir, orig_targets, unique, pairwise, prob_thresh, num_threads, suffix = optParse(0);
 
 if suffix != "":
@@ -158,7 +158,8 @@ if sys.platform.find("win") != -1 and sys.platform != "darwin":
 else:
 	rm_cmd = "rm ";
 
-indir, script_outdir = gwctlib.getOutdir(indir, "gwct", starttime, suffix);
+indir, script_outdir = gwctcore.getOutdir(indir, "gwct", starttime, suffix);
+print indir;
 inslist = os.listdir(indir);
 for each in inslist:
 	if each.find("run_codeml") != -1 or each.find("codeml_combined") != -1:
@@ -169,7 +170,7 @@ for each in inslist:
 		num_files = len(filelist);
 		break;
 
-print gwctlib.getTime() + " | Creating main output directory:\t" + script_outdir;
+print gwctcore.getTime() + " | Creating main output directory:\t" + script_outdir;
 os.system("mkdir " + script_outdir);
 
 logfilename = os.path.join(script_outdir, "gwct.log");
@@ -181,10 +182,10 @@ uniq_header = "# Chromosome\tGeneID\tAlignLen\tPosition\tBackgroundAlleles\tTarg
 l = 1;
 sp = 65;
 
-gwctlib.logCheck(l, logfilename, "# =======================================================================");
-gwctlib.logCheck(l, logfilename, "#\t\tGWCT: Genome-Wide Convergence Tester");
-gwctlib.logCheck(l, logfilename, "#\t\t\t" + gwctlib.getDateTime());
-gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INPUT  | Using ancestral reconstructions in:", sp) + indir);
+gwctcore.logCheck(l, logfilename, "# =======================================================================");
+gwctcore.logCheck(l, logfilename, "#\t\tGWCT: Genome-Wide Convergence Tester");
+gwctcore.logCheck(l, logfilename, "#\t\t\t" + gwctcore.getDateTime());
+gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# INPUT  | Using ancestral reconstructions in:", sp) + indir);
 if orig_targets != "":
 	orig_targets = orig_targets.split(" ");
 	for t in xrange(len(orig_targets)):
@@ -196,33 +197,33 @@ if orig_targets != "":
 	elif prob_thresh != 0:
 		convfilename = os.path.join(script_outdir, "conv_sites_" + str(prob_thresh) + ".txt");
 		divfilename = os.path.join(script_outdir, "div_sites_" + str(prob_thresh) + ".txt");
-	gwctlib.filePrep(convfilename, main_header);
-	gwctlib.filePrep(divfilename, main_header);
-	gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Target species:", sp) + str(orig_targets));
+	gwctcore.filePrep(convfilename, main_header);
+	gwctcore.filePrep(divfilename, main_header);
+	gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# INFO   | Target species:", sp) + str(orig_targets));
 	if unique == 1:
 		uniqfilename = os.path.join(script_outdir, "unique_sites.txt");
-		gwctlib.filePrep(uniqfilename, uniq_header);
-		gwctlib.logCheck(l, logfilename, "# INFO   | Counting unique substitutions on target branches");
+		gwctcore.filePrep(uniqfilename, uniq_header);
+		gwctcore.logCheck(l, logfilename, "# INFO   | Counting unique substitutions on target branches");
 	else:
 		uniqfilename = "";
-#	gwctlib.logCheck(l, logfilename, "# INFO   | Not performing pairwise comparisons");
+#	gwctcore.logCheck(l, logfilename, "# INFO   | Not performing pairwise comparisons");
 elif pairwise == 1:
 	pw_dir = script_outdir + "pairwise_tips/"
 	pw_dir = os.path.join(script_outdir, "pairwise_tips");
-	gwctlib.logCheck(l, logfilename, "# INFO   | Performing pairwise comparisons of TIP branches");
+	gwctcore.logCheck(l, logfilename, "# INFO   | Performing pairwise comparisons of TIP branches");
 elif pairwise == 2:
 	pw_dir = os.path.join(script_outdir, "pairwise_all");
-	gwctlib.logCheck(l, logfilename, "# INFO   | Performing pairwise comparisons of ALL branches");
+	gwctcore.logCheck(l, logfilename, "# INFO   | Performing pairwise comparisons of ALL branches");
 if prob_thresh > 0:
-	gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Ancestral probability threshold:", sp) + str(prob_thresh));
-gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Number of threads:", sp) + str(num_threads));
-gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# OUTPUT | Output directory created within input directory:", sp) + script_outdir);
-gwctlib.logCheck(l, logfilename, gwctlib.spacedOut("# INFO   | Checking for convergent and divergent sites", sp));
-gwctlib.logCheck(l, logfilename, "# ---------------------------------------------\n");
+	gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# INFO   | Ancestral probability threshold:", sp) + str(prob_thresh));
+gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# INFO   | Number of threads:", sp) + str(num_threads));
+gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# OUTPUT | Output directory created within input directory:", sp) + script_outdir);
+gwctcore.logCheck(l, logfilename, gwctcore.spacedOut("# INFO   | Checking for convergent and divergent sites", sp));
+gwctcore.logCheck(l, logfilename, "# ---------------------------------------------\n");
 #sys.exit()
 if pairwise != 0:
 	uniqfilename = "";
-	print gwctlib.getTime() +  " | +Creating pairwise output directory.\n";
+	print gwctcore.getTime() +  " | +Creating pairwise output directory.\n";
 	os.system("mkdir " + pw_dir);
 	target_counts = {};
 
@@ -291,8 +292,8 @@ else:
 	for pair in main_results_dict:
 		pairconvfile = os.path.join(pw_dir, pair + "_conv.txt");
 		pairdivfile = os.path.join(pw_dir, pair + "_div.txt");
-		gwctlib.filePrep(pairconvfile, main_header);
-		gwctlib.filePrep(pairdivfile, main_header);
+		gwctcore.filePrep(pairconvfile, main_header);
+		gwctcore.filePrep(pairdivfile, main_header);
 		open(pairconvfile, "a").writelines(main_results_dict[pair][0]);
 		open(pairdivfile, "a").writelines(main_results_dict[pair][1]);
 		cur_conv_num = len(main_results_dict[pair][0]);
@@ -307,24 +308,24 @@ else:
 
 	open(os.path.join(script_outdir, "crtmp.txt"),"w").write(" ".join(map(str, conv_sites_vect)));
 	open(os.path.join(script_outdir, "drtmp.txt"),"w").write(" ".join(map(str, div_sites_vect)));
-	gwctlib.logCheck(l, logfilename, "\n\n# " + gwctlib.getTime() + " | Calling R to plot C/D ratios\n");
+	gwctcore.logCheck(l, logfilename, "\n\n# " + gwctcore.getTime() + " | Calling R to plot C/D ratios\n");
 	print "-Begin R screen output-";
-	r_cmd = "rscript " + os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib-gwct", "cd_ratio_reg.r") + " " + script_outdir + " crtmp.txt drtmp.txt";
+	r_cmd = "rscript " + os.path.join(os.path.dirname(os.path.realpath(__file__)), "lib", "cd_ratio_reg.r") + " " + script_outdir + " crtmp.txt drtmp.txt";
 	os.system(r_cmd);
 	print "--End R screen output--";
-	gwctlib.logCheck(l, logfilename, "\n# " + gwctlib.getTime() + " | Removing temporary files");
+	gwctcore.logCheck(l, logfilename, "\n# " + gwctcore.getTime() + " | Removing temporary files");
 	os.system(rm_cmd + os.path.join(script_outdir, "crtmp.txt"));
 	os.system(rm_cmd + os.path.join(script_outdir, "drtmp.txt"));
 
 
-gwctlib.logCheck(l, logfilename, "\n# ---------------------------------------------");
-gwctlib.logCheck(l, logfilename, "\n# " + gwctlib.getTime() + " Done!");
+gwctcore.logCheck(l, logfilename, "\n# ---------------------------------------------");
+gwctcore.logCheck(l, logfilename, "\n# " + gwctcore.getTime() + " Done!");
 if type(conv_sites) == list:
 	conv_sites = sum(conv_sites);
 	div_sites = sum(div_sites);
-gwctlib.logCheck(l, logfilename, "# Total convergent sites found: " + str(conv_sites));
-gwctlib.logCheck(l, logfilename, "# Total divergent sites found: " + str(div_sites));
+gwctcore.logCheck(l, logfilename, "# Total convergent sites found: " + str(conv_sites));
+gwctcore.logCheck(l, logfilename, "# Total divergent sites found: " + str(div_sites));
 if unique == 1:
-	gwctlib.logCheck(l, logfilename, "# Total unique sites found: " + str(uniq_sites));
-gwctlib.logCheck(l, logfilename, "# Total genes checked: " + str(num_files));
-gwctlib.logCheck(l, logfilename, "# ==============================================================================================");
+	gwctcore.logCheck(l, logfilename, "# Total unique sites found: " + str(uniq_sites));
+gwctcore.logCheck(l, logfilename, "# Total genes checked: " + str(num_files));
+gwctcore.logCheck(l, logfilename, "# ==============================================================================================");

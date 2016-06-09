@@ -5,7 +5,7 @@
 #Forked from CORE September 2015.
 #############################################################################
 
-import sys
+import sys, re
 
 #############################################################################
 def getBranchLength(bltree, spec_label):
@@ -33,6 +33,18 @@ def getBranchLength(bltree, spec_label):
 				return curbranch;
 		d = d + 1;
 	startind = d;
+
+#############################################################################
+
+def remBranchLength(treestring):
+# Removes branch lengths from a tree.
+
+	treestring = re.sub('[)][\d.eE-]+:[\d.eE-]+', ')', treestring);
+	treestring = re.sub('(?<=[)])[\d.eE-]+(?=[,();])', '', treestring);
+	treestring = re.sub(':[\d.eE-]+', '', treestring);
+	treestring = re.sub('<[\d]+>', '', treestring);
+
+	return treestring;
 
 #############################################################################
 
@@ -83,9 +95,156 @@ def specRelabel(s, t_d):
 			s = node;
 	return s;
 
+
+def treeParse(tree, debug=0):
+# The treeParse function takes as input a rooted phylogenetic tree with branch lengths and returns the tree with node labels and a
+# dictionary with usable info about the tree in the following format:
+# New (current) format:
+# node:[branch length (if present), ancestral node, node type, node label (if present)]
+
+	tree = tree.strip();
+	if tree[-1] != ";":
+		tree += ";";
+	# Some string handling
+
+	nodes = {};
+	bl = {};
+	supports = {};
+	ancs = {};
+	# Initialization of all the tracker dicts
+
+	topology = remBranchLength(tree);
+	nodes = { n : 'tip' for n in topology.replace("(","").replace(")","").replace(";","").split(",") };
+	# Retrieval of the tip labels
+
+	new_tree = "";
+	z = 0;
+	numnodes = 1;
+	while z < (len(tree)-1):
+		new_tree += tree[z];
+		if tree[z] == ")":
+			node_label = "<" + str(numnodes) + ">";
+			new_tree += node_label;
+			nodes[node_label] = 'internal';
+			numnodes += 1;
+		z += 1;
+	nodes[node_label] = 'root';
+	# This labels the original tree as new_tree and stores the nodes and their types in the nodes dict
+
+	topo = "";
+	z = 0;
+	numnodes = 1;
+	while z < (len(topology)-1):
+		topo += topology[z];
+		if topology[z] == ")":
+			node_label = "<" + str(numnodes) + ">";
+			topo += node_label;
+			numnodes += 1;
+		z += 1;
+	# This labels the topology with the same internal labels
+
+	for node in nodes:
+	# One loop through the nodes to retrieve all other info
+
+		if node + ")" in tree or node + "," in new_tree:
+		# If the node is followed immediately by a ) or , then there are no branch lengths or supports to collect
+			supports[node] = "NA";
+			bl[node] = "NA";
+
+		elif node + ":" in new_tree:
+		# If the node is followed immediately by a : then there is a branch length, but no support, to collect
+			supports[node] = "NA";
+			cur_bl = re.findall(node + ":[\d.Ee-]+", new_tree);
+			cur_bl = cur_bl[0].replace(node + ":", "");
+			bl[node] = cur_bl;
+
+		else:
+		# Otherwise we must collect both support and branch length or just support
+			cur_bsl = re.findall(node + "[\d.Ee-]+:[\d.Ee-]+", new_tree);
+			if cur_bsl:
+			# If the pattern above is found then the node has both support and branch length
+				cur_bs = cur_bsl[0].replace(node, "");
+				cur_bs = cur_bs[:cur_bs.index(":")];
+				cur_bl = cur_bsl[0].replace(node + cur_bs + ":", "");
+				supports[node] = cur_bs;
+				bl[node] = cur_bl;
+			else:
+			# If it is not found then the branch only has a support label
+				cur_bs = re.findall(node + "[\w.Ee<> -]+", new_tree);
+				supports[node] = cur_bs[0][cur_bs[0].index(">")+1:];
+				## REMEMBER I CHANGED THIS FOR SOMETHING
+				bl[node] = "NA";
+
+		# Next we get the ancestral nodes. If the node is the root this is set to NA.
+		if nodes[node] == 'root':
+			ancs[node] = "NA";
+			continue;
+
+		anc_match = re.findall('[(),]' + node + '[\d]*[:(),]', new_tree);
+		anc_tree = new_tree[new_tree.index(anc_match[0]):][1:];
+		# Ancestral labels are always to the right of the node label in the text of the tree, so we start our scan from the node label
+
+		if debug == 1:
+			print(node);
+			print anc_match;
+			print(anc_tree);
+			print("---");
+
+		cpar_count = 0;
+		cpar_need = 1;
+
+		for i in range(len(anc_tree)):
+		# We find the ancestral label by finding the ) which matches the nesting of the number of ('s found
+			if anc_tree[i] == "(":
+				cpar_need = cpar_need + 1;
+			if anc_tree[i] == ")" and cpar_need != cpar_count:
+				cpar_count = cpar_count + 1;
+			if anc_tree[i] == ")" and cpar_need == cpar_count:
+				anc_tree = anc_tree[i+1:];
+				ancs[node] = anc_tree[:anc_tree.index(">")+1];
+				break;
+
+	nofo = {};
+	for node in nodes:
+		nofo[node] = [bl[node], ancs[node], nodes[node], supports[node]];
+	# Now we just restructure everything to the old format for legacy support
+
+	if debug == 1:
+	# Debugging options to print things out
+		print "\ntree:\n" + tree + "\n";
+		print "new_tree:\n" + new_tree + "\n";
+		print "topology:\n" + topo + "\n";
+		print "nodes:";
+		print nodes;
+		print
+		print "bl:";
+		print bl;
+		print
+		print "supports:";
+		print supports;
+		print
+		print "ancs:";
+		print ancs;
+		print
+		print "-----------------------------------";
+		print
+		print "nofo:";
+		print nofo;
+		print
+
+	return nofo, topo;
+
+
+
+#############################################################################
+#############################################################################
+#############################################################################
+#############################################################################
+#############################################################################
+#############################################################################
 #############################################################################
 
-def treeParse(tree, tree_type):
+def treeParseOld(tree, tree_type):
 #The treeParse function takes as input a rooted phylogenetic tree with branch lengths and returns the tree with node labels and a 
 #dictionary with usable info about the tree in the following format:
 #

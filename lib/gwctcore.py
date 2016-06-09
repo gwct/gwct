@@ -5,12 +5,7 @@
 #Forked from CORE September 2015
 #############################################################################
 
-import string
-import sys
-import os
-import re
-import subprocess
-import datetime
+import sys, os, datetime
 
 #############################################################################
 
