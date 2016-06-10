@@ -2,7 +2,7 @@
 #############################################################################
 #Runs codeml on a single .fa file or a directory full of .fa files.
 #
-#Dependencies: PAML, newickutils
+#Dependencies: PAML, newickutils (if you want to prune your tree)
 #
 #Gregg Thomas, Summer 2015
 #############################################################################
@@ -19,7 +19,7 @@ nts = ["A","T","C","G","N","-","X"];
 def optParse(errorflag):
 #This function handles the command line options.
 
-	parser = argparse.ArgumentParser(description="Runs codeml on a single .fa file or a directory full of .fa files. Dependencies: PAML, newickutils");
+	parser = argparse.ArgumentParser(description="Runs codeml on a single .fa file or a directory full of .fa files. Dependencies: PAML, newickutils (if you want to prune your tree)");
 
 	parser.add_argument("-i", dest="input", help="Input. Either a directory containing many FASTA files or a single FASTA file.");
 	parser.add_argument("-c", dest="paml_path", help="You must specify the full path to your PAML DIRECTORY here.");
@@ -100,12 +100,10 @@ starttime = gwctcore.getLogTime();
 if not os.path.isdir(ppath):
 	gwctcore.errorOut(10, "-c must be a valid directory path");
 	optParse(1);
-elif ppath[-1] != "/":
-	ppath = ppath + "/";
 
 if os.path.isfile(ins):
 	fileflag = 1;
-	indir = os.path.dirname(os.path.realpath(ins)) + "/";
+	indir = os.path.dirname(os.path.realpath(ins));
 	indir, script_outdir = gwctcore.getOutdir(indir, "run_codeml", starttime, outdir_suffix);
 	outdir = os.path.join(script_outdir, "codeml_out");
 	if aopt == 1:
@@ -115,15 +113,10 @@ if os.path.isfile(ins):
 else:
 	fileflag = 0;
 	indir, script_outdir = gwctcore.getOutdir(ins, "run_codeml", starttime, outdir_suffix);
-	if outdir_suffix != None:
-		if script_outdir[-1] == "/":
-			script_outdir = script_outdir[:len(script_outdir)-1] + "-" + outdir_suffix + "/";
-		else:
-			script_outdir = script_outdir + "-" + outdir_suffix + "/";
 	outdir = os.path.join(script_outdir, "codeml_out");
 	filelist = os.listdir(indir);
 	if aopt == 1:
-		ancdir = os.path.join(script_outdir + "anc_seqs_fa");
+		ancdir = os.path.join(script_outdir, "anc_seqs_fa");
 
 print gwctcore.getTime() + " | Creating main output directory:\t" + script_outdir;
 os.system("mkdir " + script_outdir);
@@ -258,7 +251,7 @@ for each in filelist:
 	ctlFile.write("CodonFreq = 2\n");
 	ctlFile.write("clock = 0\n");
 	ctlFile.write("aaDist = 0\n");
-	ctlFile.write("aaRatefile = " + ppath + "/dat/wag.dat\n");
+	ctlFile.write("aaRatefile = " + os.path.join(ppath, "dat", "wag.dat") + "\n");
 	ctlFile.write("model = 2\n\n");
 
 	if bsopt in [1,2]:
@@ -287,7 +280,7 @@ for each in filelist:
 
 	ctlFile.close();
 
-	codeml_cmd = ppath + "bin/codeml " + ctlfilename;
+	codeml_cmd = os.path.join(ppath, "bin", "codeml " + ctlfilename);
 	if v == 0:
 		if os.path.isfile(ins):
 			codeml_cmd = codeml_cmd + " >> " + codeml_logfile;
