@@ -101,15 +101,21 @@ def splitThreads(arglist):
 	results_dict = {};
 
 	for filename in filelist_func:
+		if ".fa" not in filename:
+			continue;
 		print filename;
 
-		gid = filename[:filename.index("_ancprobs.fa")];
+		if u != 1:
+			gid = filename[:filename.index("_ancprobs.fa")];
+		elif u == 1:
+			gid = filename[:filename.index(".fa")];
 		gene = "_".join(gid.split("_")[:2]);
 		chromosome = gid[gid.find("chr"):gid.find("chr")+4]
 		infilename = os.path.join(indir, filename);
-		treefilename = os.path.join(indir, gid + "_anc.tre");
-		tree = open(treefilename,"r").read().replace("\n","");
-		tree_dict, new_tree = gwctree.treeParse(tree);
+		if u != 1:
+			treefilename = os.path.join(indir, gid + "_anc.tre");
+			tree = open(treefilename,"r").read().replace("\n","");
+			tree_dict, new_tree = gwctree.treeParse(tree);
 
 		if orig_targets != "":
 			results_key = str(orig_targets_func);
@@ -161,14 +167,18 @@ else:
 indir, script_outdir = gwctcore.getOutdir(indir, "gwct", starttime, suffix);
 print indir;
 inslist = os.listdir(indir);
-for each in inslist:
-	if each.find("run_codeml") != -1 or each.find("codeml_combined") != -1:
-		#indir = indir + each + "/anc_seqs_fa/";
-		indir = os.path.join(indir, each, "anc_seqs_fa");
-		orig_filelist = os.listdir(indir);
-		filelist = [f for f in orig_filelist if f.find("ancprobs") != -1];
-		num_files = len(filelist);
-		break;
+if unique != 1:
+	for each in inslist:
+		if each.find("run_codeml") != -1 or each.find("codeml_combined") != -1:
+			#indir = indir + each + "/anc_seqs_fa/";
+			indir = os.path.join(indir, each, "anc_seqs_fa");
+			orig_filelist = os.listdir(indir);
+			filelist = [f for f in orig_filelist if f.find("ancprobs") != -1];
+			num_files = len(filelist);
+			break;
+elif unique == 1:
+	filelist = os.listdir(indir);
+	num_files = len(filelist);
 
 print gwctcore.getTime() + " | Creating main output directory:\t" + script_outdir;
 os.system("mkdir " + script_outdir);

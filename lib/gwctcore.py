@@ -85,6 +85,10 @@ def logCheck(lopt, lfilename, outline):
 #Function checks whether or not to write to a logfile, print something, or both.
 	if lopt == 1:
 		printWrite(lfilename, outline);
+	elif lopt == 2:
+		f = open(lfilename, "a");
+		f.write(outline + "\n")
+		f.close();
 	else:
 		print outline;
 
