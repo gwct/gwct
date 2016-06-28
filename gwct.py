@@ -118,10 +118,10 @@ def splitThreads(arglist):
 			tree_dict, new_tree = gwctree.treeParse(tree);
 
 		if orig_targets != "":
-			results_key = str(orig_targets_func);
+			results_key = str(orig_targets);
 			if results_key not in results_dict:
 				results_dict[results_key] = [[],[],[]];
-			targets = copy.deepcopy(orig_targets_func);
+			targets = copy.deepcopy(orig_targets);
 			#Resets the targets for each gene.
 			results_dict = convergence.convCheck(infilename, results_dict, results_key, targets, prob_thresh, chromosome, gene, tree_dict, u);
 			#Checking for convergent sites
