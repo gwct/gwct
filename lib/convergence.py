@@ -23,7 +23,7 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td
 				target_alleles[">" + target_list[t][s]] = "";
 				target_list[t][s] = gwctree.specRelabel(target_list[t][s],td);
 	#Relabeling of target labels to match those in the tree.
-	#print target_list;
+
 	conv_nodes = {};
 	for t in target_list:
 		if type(t) == list:
@@ -33,7 +33,7 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td
 			if "_" in t:
 				conv_nodes[">" + t[t.index("_")+1:]] = ">node #" + td[td[t][1]][3];
 			else:
-				conv_nodes[">node #" + t] = ">node #" + td[td[t][1]][3];
+				conv_nodes[">node #" + td[t][3]] = ">node #" + td[td[t][1]][3];
 
 	#Identification of ancestral and target nodes in the tree. If more than one species is present in a group, this will get the common ancestor
 	#of those species as the target node.
