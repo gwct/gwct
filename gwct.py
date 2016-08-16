@@ -123,7 +123,7 @@ def splitThreads(arglist):
 				results_dict[results_key] = [[],[],[]];
 			targets = copy.deepcopy(orig_targets);
 			#Resets the targets for each gene.
-			print targets;
+		
 			results_dict = convergence.convCheck(infilename, results_dict, results_key, targets, prob_thresh, chromosome, gene, tree_dict, u);
 			#Checking for convergent sites
 
