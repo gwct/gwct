@@ -220,7 +220,6 @@ for each in filelist:
 		for tip in to_prune:
 			nw_cmd = nw_cmd + tip + " ";
 		nw_cmd = nw_cmd + " > pruned.tre";
-#		print nw_cmd;
 		os.system(nw_cmd);
 
 	ctlFile = open(ctlfilename, "w");
