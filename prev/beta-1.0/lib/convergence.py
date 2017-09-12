@@ -9,10 +9,9 @@
 import sys, gwctree, gwctcore
 
 #############################################################################
-def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_opt):
+def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, chrome, g, td, u_opt):
 
 	#print conv_key;
-	#print target_list;
 	#print "-----";
 	target_alleles = {};
 	for t in xrange(len(target_list)):
@@ -35,15 +34,11 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				conv_nodes[">" + t[t.index("_")+1:]] = ">node #" + td[td[t][1]][3];
 			else:
 				conv_nodes[">node #" + td[t][3]] = ">node #" + td[td[t][1]][3];
+
 	#Identification of ancestral and target nodes in the tree. If more than one species is present in a group, this will get the common ancestor
 	#of those species as the target node.
 	#print conv_nodes;
 	#print "-----";
-
-	if pair_opt == 1:
-		target_alleles = { ">" + t[t.index("_")+1:] : '' for t in target_alleles };
-
-
 	probseqs = gwctcore.fastaGetDict(in_name);
 	#Reading of the sequence probability file.
 
@@ -70,6 +65,7 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				probs[seq].append(p);
 	#Splitting of the sequences and probabilities into separate dictionaries.
 
+
 	x = 0;
 	while x < seqlen:
 	#For each site in the current gene, check for convergence. x is the index of the current residue.
@@ -80,7 +76,6 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 		conv_site = {};
 		cur_probs = [];
 		bg_alleles = {};
-
 		for seq in seqs:
 			if seq in conv_nodes.keys():
 				conv_site[seq] = seqs[seq][x];
@@ -92,7 +87,6 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				bg_alleles[seq] = seqs[seq][x];
 			elif seq.find("node #") == -1:
 				target_alleles[seq] = seqs[seq][x];
-
 		#Retrieves states and probabilities for target and ancestral nodes.
 		#print target_alleles;
 		#print conv_nodes;
@@ -112,7 +106,7 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 		if all(c >= p_thresh for c in cur_probs):
 			if conv_site.values().count(conv_site.values()[0]) == len(conv_site.values()) and conv_site.values()[0] not in anc_site.values():
 				#c_sites = c_sites + 1;
-				outline = g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
 				conv_dict[conv_key][0].append(outline);
 				#c_sites.append(outline);
 				#convfile = open(c_name, "a");
@@ -126,12 +120,12 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				#print conv_site;
 				#print anc_site;
 				#print cur_probs;
-			#If a convergent site is found, write it to the file and increment c_sites. Also checks if a probability threshold has been set and only writes if all probs for all
+			#If a convergent site is found, write it to the file and increment c_sites. Also checkes if a probability threshold has been set and only writes if all probs for all
 			#reconstructed states are >= to that threshold.
 
 			if all(anc_site[conv_nodes[node]] != conv_site[node] for node in conv_nodes) and all(conv_site.values().count(aa) == 1 for aa in conv_site.values()):
 				#d_sites = d_sites + 1;
-				outline = g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(anc_site.values()) + "\t" + "".join(conv_site.values()) + "\n";
 				conv_dict[conv_key][1].append(outline);
 				#d_sites.append(outline);
 				#divfile = open(d_name, "a");
@@ -148,9 +142,9 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				#print cur_probs;
 				#sys.exit();
 
-		if pair_opt in [0,1] and target_alleles.values().count(target_alleles.values()[0]) == len(target_alleles.values()) and target_alleles.values()[0] not in bg_alleles.values() and "-" not in bg_alleles.values() and "X" not in bg_alleles.values():
+		if u_opt == 1 and target_alleles.values().count(target_alleles.values()[0]) == len(target_alleles.values()) and target_alleles.values()[0] not in bg_alleles.values() and "-" not in bg_alleles.values() and "X" not in bg_alleles.values():
 				#u_sites = u_sites + 1;
-				outline = g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(bg_alleles.values()) + "\t" + "".join(target_alleles.values()) + "\n";
+				outline = chrome + "\t" + g + "\t" + str(seqlen) + "\t" + str(x+1) + "\t" + "".join(bg_alleles.values()) + "\t" + "".join(target_alleles.values()) + "\n";
 				conv_dict[conv_key][2].append(outline);
 				#u_sites.append(outline);
 				#unifile = open(u_name, "a");
@@ -164,8 +158,7 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 				#print bg_alleles;
 				#sys.exit();
 
-		x += 1;
-
+		x = x + 1;
 	return conv_dict;
 
 #############################################################################

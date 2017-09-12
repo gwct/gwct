@@ -1,0 +1,16 @@
+09.11.17 -- version Beta 1.1:
+
+Changes to gwct_codeml.py:
+Small update to streamline the code of gwct_codeml.py
+-Removed -s (seqtype), -b (branch site), -a (ancestral option), -l (log file), -x (output directory suffix) options.
+-Replaced -p with --prune.
+-Script now always tells PAML to do ancestral reconstructions.
+-Changed PAML path option from -c to -p.
+
+Changes to gwct.py:
+-i is now the exact directory from a gwct_codeml.py run (and not the containing directory as before).
+Removed -u option from gwct.py -> now always counts unique substitutions when -w is 0 or 1.
+-o is now output directory and not output suffix
+
+2015 -- version Beta 1.0:
+Initial commit

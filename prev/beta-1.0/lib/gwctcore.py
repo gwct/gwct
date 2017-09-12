@@ -72,14 +72,25 @@ def getLogTime():
 
 #############################################################################
 
-def printWrite(o_name, o_line, mode=0):
+def printWrite(o_name, o_line):
 #Function to print a string AND write it to the file.
-	if mode in [0,1]:
-		print o_line;
-	if mode in [0,2]:
-		f = open(o_name, "a");
-		f.write(o_line + "\n");
+	print o_line;
+	f = open(o_name, "a");
+	f.write(o_line + "\n");
+	f.close();
+
+#############################################################################
+
+def logCheck(lopt, lfilename, outline):
+#Function checks whether or not to write to a logfile, print something, or both.
+	if lopt == 1:
+		printWrite(lfilename, outline);
+	elif lopt == 2:
+		f = open(lfilename, "a");
+		f.write(outline + "\n")
 		f.close();
+	else:
+		print outline;
 
 #############################################################################
 
@@ -91,17 +102,23 @@ def errorOut(errnum, errmsg):
 
 #############################################################################
 
-def defaultOut(output, indir, out_suffix=""):
-	if not output:
-		outdir = indir.rstrip("/").rstrip("\\") + out_suffix;
+def getOutdir(indir, prefix, stime, suf):
+#Retrieves full input directory name and proper output directory name for other scripts.
+	if not os.path.isdir(indir):
+		errorOut(0, "-i must be a valid directory path");
+		sys.exit();
+	indir = os.path.abspath(indir);
+	filelist = os.listdir(indir);
+	used = [];
+	for each in filelist:
+		if each.find("-" + prefix) != -1:
+			used.append(int(each[:each.index("-")]));
+	if used != []:
+		outdir = os.path.join(indir, str(max(used)+1) + "-" + prefix + "-" + stime + suf);
 	else:
-		outdir = output;
-	outdir += "-1";
-	i = 2;
-	while os.path.exists(outdir):
-		outdir = outdir[:outdir.rindex("-")+1] + str(i);
-		i += 1
-	return outdir;
+		outdir = os.path.join(indir, "1-" + prefix + "-" + stime + suf);
+
+	return indir, outdir;
 
 #############################################################################
 
