@@ -36,13 +36,19 @@ Then run the GWCT as follows:
 
 This will produce three files: conv-sites.txt, div-sites.txt, and uniq-sites.txt that contain a list of convergent, divergent, and unique substitutions in the target species.
 
+Or run it as:
+
+`python gwct.py -i [PAML output directory from before] -w [1,2] -o [GWCT output directory]`
+
+This will produce counts for all pairwise comparisons of tips (`-w 1`) or all nodes (`-w 2`) along with a C/D plot (if R is installed).
+
 ## Definitions
 
 **Convergent substitutions** are defined as those in which there is a substitution along two or more target lineages (as inferred by ancestral reconstructions) **to the same state**.
 
 **Divergent substitutions** are defined as those in which there is a substitution along two or more target lineages (as inferred by ancestral reconstructions) **to a different state**.
 
-**Unique substitutions** are defined when the target lineage contains one allele and all other lineages contain other alleles. Unique substitutions are only counted on the tips of the tree.
+**Unique substitutions** are defined when the target lineages contain one allele and all other lineages contain other alleles. Unique substitutions are only counted on the tips of the tree.
 
 ## Options
 
