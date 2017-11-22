@@ -34,7 +34,7 @@ Then run the GWCT as follows:
 
 `python gwct.py -i [PAML output directory from before] -t [set of target species] -p [ancestral probability threshold] -o [GWCT output directory]`
 
-This will produce three files: conv-sites.txt, div-sites.txt, and uniq-sites.txt that contain a list of convergent, divergent, and unique substitutions in the target species. Note: All target species must be in all alignments.
+This will produce three files: conv-sites.txt, div-sites.txt, and uniq-sites.txt that contain a list of convergent, divergent, and unique substitutions in the target species. Note: If a target species is missing from a given alignment, it will be removed from the list of target species.
 
 Or run it as:
 
