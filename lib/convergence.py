@@ -28,10 +28,19 @@ def convCheck(in_name, conv_dict, conv_key, target_list, p_thresh, g, td, pair_o
 	conv_nodes = {};
 	for t in target_list:
 		if type(t) == list:
+			t_tmp = [];
+			for s in t:
+				if s not in td:
+					print "*Warning: target node", s, "not in alignment. Removing from target list.";
+					continue;
+				t_tmp.append(s);
+			t = t_tmp;
 			f, com_anc = gwctree.comAnc(t,td);
 			conv_nodes[">node #" + td[com_anc][3]] = ">node #" + td[td[com_anc][1]][3];
 		else:
-			if "_" in t:
+			if t not in td:
+				print "*Warning: target node", t, "not in alignment. Removing from target list.";
+			elif "_" in t:
 				conv_nodes[">" + t[t.index("_")+1:]] = ">node #" + td[td[t][1]][3];
 			else:
 				conv_nodes[">node #" + td[t][3]] = ">node #" + td[td[t][1]][3];
