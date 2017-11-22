@@ -128,17 +128,18 @@ for cur_file in filelist:
 		seqs = gc.fastaGetDict(infilename);
 		to_prune = [tip for tip in tips if (">" + tip) not in seqs];
 
-		nw_cmd = "nw_prune " + treefile + " ";
-		for tip in to_prune:
-			nw_cmd += tip + " ";
-		nw_cmd += " > pruned.tre";
-		os.system(nw_cmd);
+		if to_prune != []:
+			nw_cmd = "nw_prune " + treefile + " ";
+			for tip in to_prune:
+				nw_cmd += tip + " ";
+			nw_cmd += " > pruned.tre";
+			os.system(nw_cmd);
 
 	with open(ctlfilename, "w") as ctlfile:
 		inline = "seqfile = " + infilename + "\n";
 		ctlfile.write(inline);
 		if treefile != "":
-			if prune:
+			if prune and to_prune != []:
 				treeline = "treefile = pruned.tre\n";
 			else:
 				treeline = "treefile = " + treefile + "\n";
