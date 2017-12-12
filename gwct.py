@@ -98,7 +98,7 @@ def splitThreads(arglist):
 			for targets in target_nodes:
 				if tree_dict[targets[0]][1] == targets[1] or tree_dict[targets[1]][1] == targets[0]:
 					continue;
-				#If one node is the ancestor of the other, skip this comparison.
+				# If one node is the ancestor of the other, skip this comparison.
 				node_key = "";
 				for n in targets:
 					if "_" in n:
@@ -111,6 +111,10 @@ def splitThreads(arglist):
 				if node_key not in results_dict:
 					results_dict[node_key] = [[],[],[]];
 	
+				print targets;
+				targets = [[t] for t in targets];
+				print targets;
+
 				results_dict = convergence.convCheck(infilename, results_dict, node_key, targets, prob_thresh, gid, tree_dict, pairwise);
 
 	return results_dict;
@@ -162,10 +166,7 @@ gc.printWrite(logfilename, "#\t\tGWCT: Genome-Wide Convergence Tester");
 gc.printWrite(logfilename, "#\t\t\t" + gc.getDateTime());
 gc.printWrite(logfilename, gc.spacedOut("# INPUT  | Using ancestral reconstructions in:", sp) + indir);
 if orig_targets != "":
-	orig_targets = orig_targets.split(" ");
-	for t in xrange(len(orig_targets)):
-		if orig_targets[t].find(",") != -1:
-			orig_targets[t] = orig_targets[t].split(",");
+	orig_targets = [t.split(",") for t in orig_targets.split(" ")];
 	gc.printWrite(logfilename, gc.spacedOut("# INFO   | Target species:", sp) + str(orig_targets));
 elif pairwise == 1:
 	pw_dir = outdir + "pairwise-tips/"
