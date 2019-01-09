@@ -57,6 +57,8 @@ indir, path, treefile, prune, v, output = optParse();
 
 file_flag = 0;
 outdir = gc.defaultOut(output, indir, "-gwct-codeml");
+print "+ Creating main output directory:\t" + outdir;
+os.system("mkdir " + outdir);
 codemldir = os.path.join(outdir, "codeml-out");
 ancdir = os.path.join(outdir, "anc-seqs-fa");
 logfilename = os.path.join(outdir, "gwct-codeml.log");
@@ -91,14 +93,14 @@ gc.printWrite(logfilename, "-------------------------------------");
 # Print IO info to screen for user.
 
 filelist = os.listdir(indir);
-print "** Creating codeml output directory:\t" + codemldir;
+print "+ Creating codeml output directory:\t" + codemldir;
 os.system("mkdir " + codemldir);
-print "** Creating directory to pass ancestral sequences and trees:\t" + ancdir;
+print "+ Creating directory to pass ancestral sequences and trees:\t" + ancdir;
 os.system("mkdir " + ancdir);
 # Create output directories.
 
 if prune:
-	print "** Retrieving tree info...";
+	print " -> Retrieving tree info...";
 	td, tree, r = gt.treeParse(open(treefile, "r").read().replace("\n",""),0);
 	tips = [node for node in td if td[node][2] == 'tip'];
 # Read tree info for pruning
