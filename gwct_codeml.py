@@ -1,25 +1,21 @@
 #!/usr/bin/python
 #############################################################################
-#Runs codeml on a single .fa file or a directory full of .fa files.
+# Runs codeml on a single .fa file or a directory full of .fa files.
 #
-#Dependencies: PAML, newickutils (if you want to prune your tree)
+# Dependencies: PAML, newickutils (if you want to prune your tree)
 #
-#Gregg Thomas, Summer 2015
+# Gregg Thomas, Summer 2015
 #############################################################################
 
 import sys, os, argparse, lib.gwctcore as gc, lib.gwctree as gt
-from random import randint
-
-aas = ["G","A","V","L","I","P","F","Y","W","S","T","C","M","N","Q","K","R","H","D","E","X","-"];
-nts = ["A","T","C","G","N","-","X"];
 
 ############################################
-#Function Definitions
+# Function Definitions
 ############################################
 def optParse():
-#This function handles the command line options.
+# This function handles the command line options and does some error checking.
 
-	parser = argparse.ArgumentParser(description="Runs codeml on a directory full of .fa files. Dependencies: PAML, newickutils (if you want to prune your tree with --prune)");
+	parser = argparse.ArgumentParser(description="Runs codeml on a directory full of .fa files. Files MUST have .fa extension. Dependencies: PAML, newickutils (if you want to prune your tree with --prune)");
 
 	parser.add_argument("-i", dest="input", help="Input. A directory containing many FASTA (.fa) files.");
 	parser.add_argument("-p", dest="paml_path", help="You must specify the full path to your PAML DIRECTORY here.");
@@ -32,75 +28,80 @@ def optParse():
 	args = parser.parse_args();
 
 	if args.input == None or args.paml_path == None:
-		sys.exit(gc.errorOut(1, "Both -i and -c must be set."));
+		sys.exit(gc.errorOut(1, "Both -i must be set."));
 	if not os.path.isdir(args.input) or not os.path.isdir(args.paml_path):
-		sys.exit(gc.errorOut(2, "Both -i and -c must be valid directory paths!"));
+		sys.exit(gc.errorOut(2, "Both -i must be valid directory paths!"));
 	else:
 		args.input = os.path.abspath(args.input);
 		args.paml_path = os.path.abspath(args.paml_path);
 	if not os.path.isfile(args.tree_file):
 		sys.exit(gc.errorOut(3, "-t must be a valid file name."));
-	#else:
-	#	args.tree_file = os.path.abspath(args.tree_file);
+
 	try:
 		td, tree, r = gt.treeParse(open(args.tree_file, "r").read().replace("\n",""));
 	except:
 		sys.exit(gc.errorOut(4, "-t does not contain a valid Newick string!"));
-	# if args.paml_seqtype not in ['codon','aa']:
-	# 	sys.exit(gc.errorOut(5, "-seqtype must be either 'codon' or 'aa'."));
+
 	if args.verbosity not in [0,1]:
 		sys.exit(gc.errorOut(6, "-v must take values of either 1 or 0"));
 
 	return args.input, args.paml_path, args.tree_file, args.prune_opt, args.verbosity, args.output;
 
 ############################################
-#Main Block
+# Main Block
 ############################################
 
-indir, path, treefile, prune, v, output = optParse();
-
 starttime = gc.getLogTime();
+indir, path, treefile, prune, v, output = optParse();
+# Get input options.
 
 file_flag = 0;
 outdir = gc.defaultOut(output, indir, "-gwct-codeml");
 codemldir = os.path.join(outdir, "codeml-out");
 ancdir = os.path.join(outdir, "anc-seqs-fa");
 logfilename = os.path.join(outdir, "gwct-codeml.log");
+# Set output file and directory info.
 
-pad = 40;
+gc.printWrite("Program call: " + " ".join(sys.argv));
+
+pad = 50;
 print gc.spacedOut(gc.getTime() + " | Creating main output directory:", pad) + outdir;
 os.system("mkdir " + outdir);
 gc.printWrite(logfilename, "=======================================================================");
 gc.printWrite(logfilename, "\tRunning codeml to reconstruct ancestral sequences");
 gc.printWrite(logfilename, "\t\t\t" + gc.getDateTime());
-gc.printWrite(logfilename, gc.spacedOut("INPUT    | Running codeml on all files in:", pad) + indir);
-gc.printWrite(logfilename, gc.spacedOut("INFO     | PAML path set to:", pad) + path);
+gc.printWrite(logfilename, gc.spacedOut("Input directory (-i):", pad) + indir);
+gc.printWrite(logfilename, gc.spacedOut("PAML path (-p):", pad) + path);
 if treefile != "":
-	gc.printWrite(logfilename, gc.spacedOut("INFO     | Using tree from file:", pad) + treefile);
+	gc.printWrite(logfilename, gc.spacedOut("Tree file (-t):", pad) + treefile);
 else:
-	gc.printWrite(logfilename, "INFO     | No tree file specified. codeml will infer a tree for each gene.");
+	gc.printWrite(logfilename, gc.spacedOut("No tree file specified (-t):", pad) + "codeml will infer a tree for each gene.");
 if prune:
-	gc.printWrite(logfilename, "INFO     | Pruning the tree for each gene.");
+	gc.printWrite(logfilename, gc.spacedOut("--prune set", pad) + "Pruning the tree for each gene.");
 # if seqtype == 'codon':
 #	gc.printWrite(logfilename, gc.spacedOut("INFO     | Seqtype set to:", pad) + "codons");
 # if seqtype == 'aa':
 #	gc.printWrite(logfilename, gc.spacedOut("INFO     | Seqtype set to:", pad) + "amino acids (aa)");
-gc.printWrite(logfilename, gc.spacedOut("OUTPUT   | Writing output to:", pad) + outdir);
+gc.printWrite(logfilename, gc.spacedOut("Output directory (-o):", pad) + outdir);
 if v == 1:
-	gc.printWrite(logfilename, "INFO     | Printing all codeml output to the screen.");
+	gc.printWrite(logfilename, " -> Printing all codeml output to the screen (-v 1)");
 else:
-	gc.printWrite(logfilename, "INFO     | Silent mode. Not printing codeml output to the screen.");
+	gc.printWrite(logfilename, " -> Silent mode. Not printing codeml output to the screen (-v 0)");
 gc.printWrite(logfilename, "-------------------------------------");
+# Print IO info to screen for user.
+
 filelist = os.listdir(indir);
 print "** Creating codeml output directory:\t" + codemldir;
 os.system("mkdir " + codemldir);
 print "** Creating directory to pass ancestral sequences and trees:\t" + ancdir;
 os.system("mkdir " + ancdir);
+# Create output directories.
 
 if prune:
 	print "** Retrieving tree info...";
 	td, tree, r = gt.treeParse(open(treefile, "r").read().replace("\n",""),0);
 	tips = [node for node in td if td[node][2] == 'tip'];
+# Read tree info for pruning
 
 gc.printWrite(logfilename, gc.getTime() + " | Starting codeml runs...\n");
 if v == 0:
@@ -108,6 +109,8 @@ if v == 0:
 ctlfilename = "codeml.ctl";
 
 i, numbars, donepercent, numfiles = 0, 0, [], len(filelist);
+# Loading bar stuff
+
 fa_skip = [];
 for cur_file in filelist:
 	if v == 0:
@@ -118,7 +121,7 @@ for cur_file in filelist:
 		fa_skip.append(cur_file);
 		continue;
 	infilename = os.path.join(indir, cur_file);
-	gid = cur_file[:cur_file.index(".")];
+	gid = cur_file[:cur_file.index(".fa")];
 	run_outdir = os.path.join(codemldir, gid);
 
 	if not os.path.exists(run_outdir):
@@ -268,5 +271,12 @@ if v == 0 and fileflag == 0:
 	pstring = "100.0% complete.\n";
 	sys.stderr.write('\b' * len(pstring) + pstring);
 gc.printWrite(logfilename, gc.getTime() + " | Done!");
+
+if fa_skip != []:
+	print " ** WARNING: " + str(len(fa_skip)) + " files were skipped for lacking the .fa file extension.";
+	print " **           Check the log file for the names of the skipped files.";
+	for f in fa_skip:
+		gc.printWrite(logfilename, f, 2);
+
 gc.printWrite(logfilename, gc.getLogTime());
 gc.printWrite(logfilename, "=======================================================================");
