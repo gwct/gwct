@@ -62,7 +62,7 @@ ancdir = os.path.join(outdir, "anc-seqs-fa");
 logfilename = os.path.join(outdir, "gwct-codeml.log");
 # Set output file and directory info.
 
-gc.printWrite("Program call: " + " ".join(sys.argv));
+gc.printWrite(logfilename, "Program call: " + " ".join(sys.argv));
 
 pad = 50;
 print gc.spacedOut(gc.getTime() + " | Creating main output directory:", pad) + outdir;
